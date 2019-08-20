@@ -24,13 +24,9 @@ len(cols)
 # In[3]:
 
 
-data=pd.read_csv('Train.txt',header=None)
+train=pd.read_csv('Train.txt',header=None)
 
-data.head()
-
-
-data.info()
-
+train.shape
 
 
 # In[4]:
@@ -38,30 +34,33 @@ data.info()
 
 test=pd.read_csv('Test.txt',header=None)
 
-test.head()
-
-test.columns=cols
+test.shape
 
 
 # In[5]:
 
 
-cols
+data=train.append(test)
+
+data.shape
 
 
 # In[6]:
+
+
+cols
+
+
+# In[7]:
 
 
 data.columns=cols
 
 data.head()
 
-data.shape
-
-data.wrong_fragment.value_counts()
 
 
-# In[7]:
+# In[8]:
 
 
 #p=pf.ProfileReport(data)
@@ -69,113 +68,61 @@ data.wrong_fragment.value_counts()
 #p.to_file('data.html')
 
 
-# In[8]:
+# In[9]:
 
 
 data.describe()
 
 
-# In[9]:
-
-
-data[data.attack!='normal']
-
-
 # In[10]:
 
 
-data.protocol_type.value_counts()
+data['attack_flag']=np.where(data.attack=='normal',0,1)
+
+data.attack_flag.value_counts()
 
 
 # In[11]:
 
 
-data.service.value_counts()
+data.head()
 
 
 # In[12]:
 
 
-data.flag.value_counts()
-
-
-# In[13]:
-
-
-data.logged_in.value_counts()
-
-
-# In[14]:
-
-
-import statsmodels.formula.api as smf
-
-
-# In[15]:
-
-
-data.attack.value_counts()
-
-
-# In[16]:
-
-
-data['attack_flag']=np.where(data.attack=='normal',0,1)
-
-
-data.attack_flag.value_counts()
-
-
-
-
-# In[17]:
-
-
-data.head()
-
-
-# In[18]:
-
-
 data.dtypes
 
 
-# In[19]:
-
-
-data.duration
-
-
-# In[20]:
+# In[13]:
 
 
 num=[key for key in dict(data.dtypes) if dict(data.dtypes)[key] in ['int64','float64','int32','float32']]
 cat=[key for key in dict(data.dtypes) if dict(data.dtypes)[key] in ['object','str']]
 
 
-# In[21]:
+# In[14]:
 
 
 cat
 
-
 cat.append('is_guest_login')
 
 cat.append('attack_flag')
-cat.append('logged_in')
 
+cat.append('logged_in')
 
 cat.append('root_shell')
 
 
-# In[22]:
+# In[15]:
 
 
 # Removing service columns because of high cardinality
 cat.remove('service')
 
 
-# In[23]:
+# In[16]:
 
 
 
@@ -199,29 +146,13 @@ num.remove('root_shell')
 len(num)
 
 
-# In[24]:
+# In[17]:
 
 
 num
 
 
-# In[25]:
-
-
-data.num_failed_logins.value_counts()
-
-
-failedlogins=pd.crosstab(data.num_failed_logins,data.attack_flag)
-
-failedlogins.plot(kind="bar", 
-                 figsize=(8,8),stacked=True)
-
-#pd.crosstab(data.logged_in,data.attack_flag)
-
-#sns.barplot(x='attack_flag',y='num_failed_logins',data=data)
-
-
-# In[26]:
+# In[18]:
 
 
 # Creating Data audit Report
@@ -238,7 +169,7 @@ def cat_summary(x):
                   index=['N', 'NMISS'])
 
 
-# In[27]:
+# In[19]:
 
 
 num_data=data[num]
@@ -252,7 +183,7 @@ num_data.apply(var_summary)
 #num_data.su_attempted.value_counts()
 
 
-# In[28]:
+# In[20]:
 
 
 def outliercapping(x):
@@ -262,25 +193,25 @@ def outliercapping(x):
     
 
 
-# In[29]:
+# In[21]:
 
 
 num_data=num_data.apply(outliercapping)
 
 
-# In[30]:
+# In[22]:
 
 
 num_data.apply(var_summary)
 
 
-# In[31]:
+# In[23]:
 
 
 cat_data.apply(cat_summary)
 
 
-# In[32]:
+# In[24]:
 
 
 def attackclass(x):
@@ -300,13 +231,13 @@ cat_data.drop('attack',axis=1,inplace=True)
 #cat_data['attack_class']=cat_data.attack.apply(attackclass)
 
 
-# In[33]:
+# In[25]:
 
 
 cat_data.head()
 
 
-# In[34]:
+# In[26]:
 
 
 #cor=num_data.corr()
@@ -316,21 +247,29 @@ cat_data.head()
 #sns.heatmap(cor, annot=True, cmap = 'viridis')
 
 
-# In[35]:
+# In[27]:
 
 
 num_data.num_access_files.value_counts()
 
 
-# In[36]:
+# In[28]:
 
 
 
 
 # dropping numeric columns after outlier treatement
+# all these variables have zero >99%
 
 num_data.drop(columns=['land','wrong_fragment','urgent','num_failed_logins','su_attempted','num_root','num_file_creations','num_shells',
                        'num_access_files'], axis=1, inplace=True)
+
+#dropping the variables because of high correlation with the other variable
+
+num_data.drop(columns=['dst_host_srv_serror_rate','dst_host_srv_rerror_rate','srv_rerror_rate','srv_serror_rate'],axis=1,inplace=True)
+
+
+
 
 
 c=num_data.corr()
@@ -338,7 +277,7 @@ c=num_data.corr()
 c.to_csv('numeric_corr.csv')
 
 
-# In[37]:
+# In[29]:
 
 
 def create_dummies( df, colname ):
@@ -349,7 +288,7 @@ def create_dummies( df, colname ):
     return df
 
 
-# In[38]:
+# In[30]:
 
 
 #for c_feature in categorical_features
@@ -359,71 +298,114 @@ for c_feature in cat_data.columns:
     cat_data_new = create_dummies(cat_data_new , c_feature )
 
 
-# In[39]:
+# In[31]:
 
 
 cat_data_new.head()
 
 
-# In[40]:
+# In[32]:
 
 
 final_data= pd.concat([num_data,cat_data_new],axis=1)
 final_data.head()
 
+train_final_data=final_data.iloc[0:len(train)]
 
-# In[41]:
+test_final_data=final_data.iloc[len(train):len(data)]
+
+test_final_data.shape
+
+
+                
+
+
+# In[33]:
 
 
 import statsmodels.formula.api as sm
 from sklearn import metrics
 
 somersd_df = pd.DataFrame()
-for num_variable in final_data.columns.difference(['attack_flag_1']):
-    logreg = sm.logit(formula = str('attack_flag_1 ~ ')+str(num_variable), data=final_data)
+for num_variable in train_final_data.columns.difference(['attack_flag_1']):
+    logreg = sm.logit(formula = str('attack_flag_1 ~ ')+str(num_variable), data=train_final_data)
     result = logreg.fit()
     y_score = pd.DataFrame(result.predict())
     y_score.columns = ['Score']
-    somers_d = 2*metrics.roc_auc_score(final_data['attack_flag_1'],y_score) - 1
+    somers_d = 2*metrics.roc_auc_score(train_final_data['attack_flag_1'],y_score) - 1
     temp = pd.DataFrame([num_variable,somers_d]).T
     temp.columns = ['Variable Name', 'SomersD']
     somersd_df = pd.concat([somersd_df, temp], axis=0)
 
 
-# In[42]:
+# In[34]:
 
 
 somersd_df.sort_values('SomersD',ascending=False)
 
 
-# In[43]:
+# In[ ]:
+
+
+
+
+
+# In[35]:
 
 
 from sklearn import datasets
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 
-X = final_data[final_data.columns.difference(['attack_flag_1'])]
+X = train_final_data[train_final_data.columns.difference(['attack_flag_1'])]
 logreg = LogisticRegression()
 rfe = RFE(logreg, 30)
-rfe = rfe.fit(X, final_data[['attack_flag_1']] )
+rfe = rfe.fit(X, train_final_data[['attack_flag_1']] )
 print(rfe.support_)
 print(rfe.ranking_)
 
 
-# In[44]:
+# In[36]:
 
 
-X.columns
+X.columns[rfe.support_]
 
 
-# In[45]:
+# In[37]:
+
+
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2, f_classif, mutual_info_classif
+
+
+# In[38]:
+
+
+X=train_final_data[train_final_data.columns.difference(['attack_flag_1'])]
+y=train_final_data[['attack_flag_1']]
+
+kbest=SelectKBest(f_classif,k=30).fit(X,y)
+
+
+# In[39]:
+
+
+kbest.get_support()
+
+
+# In[40]:
+
+
+kbestfeatures=X.columns[kbest.get_support()]
+
+
+# In[41]:
 
 
 logreg=LogisticRegression()
 
-X=final_data[final_data.columns.difference(['attack_flag_1'])]
-y=final_data[['attack_flag_1']]
+X=train_final_data[train_final_data.columns.difference(['attack_flag_1'])]
+y=train_final_data[['attack_flag_1']]
 
 result=logreg.fit(X,y)
 
@@ -432,64 +414,9 @@ result.score(X,y)
                 
 
 
-# In[46]:
+# In[42]:
 
 
-test.head()
-
-test['attack_flag']=np.where(test.attack=='normal',0,1)
-    
-cat.remove('attack')
-test_data_num=test[num]
-
-test_data_cat=test[cat]
-
-
-# In[47]:
-
-
-#for c_feature in categorical_features
-test_final_data_new = test_data_cat
-for c_feature in test_data_cat.columns:
-    test_final_data_new[c_feature] = test_data_cat[c_feature].astype('category')
-    test_final_data_new = create_dummies(test_final_data_new , c_feature )
-
-
-# In[48]:
-
-
-test_data_num.drop(columns=['land','wrong_fragment','urgent','num_failed_logins','su_attempted','num_root','num_file_creations','num_shells',
-                       'num_access_files'], axis=1, inplace=True)
-
-
-# In[49]:
-
-
-test_final_data=pd.concat([test_data_num,test_final_data_new],axis=1)
-
-
-# In[50]:
-
-
-test_final_data.head()
-
-
-# In[51]:
-
-
-final_data.head()
-
-
-# In[53]:
-
-
-len(test_final_data.columns)
-
-
-# In[55]:
-
-
-logreg=LogisticRegression()
 
 X=test_final_data[test_final_data.columns.difference(['attack_flag_1'])]
 y=test_final_data[['attack_flag_1']]
@@ -501,8 +428,132 @@ result.score(X,y)
                 
 
 
-# In[ ]:
+# In[43]:
+
+
+from sklearn.model_selection import train_test_split
+
+X=train_final_data[train_final_data.columns.difference(['attack_flag_1'])]
+
+
+train_X,test_X,train_y,test_y=train_test_split(X,train_final_data['attack_flag_1'],test_size=0.3,random_state=123)
+
+
+# In[49]:
+
+
+import statsmodels.formula.api as smf
+import sklearn.metrics as metrics
+
+s=''
+for c in kbestfeatures:
+    s=s+ c + '+'
+
+s
+
+
+f='attack_flag_1 ~ count+diff_srv_rate+dst_bytes+dst_host_count+dst_host_diff_srv_rate+dst_host_rerror_rate+dst_host_same_src_port_rate+dst_host_same_srv_rate+dst_host_serror_rate+dst_host_srv_count+dst_host_srv_diff_host_rate+flag_REJ+flag_RSTO+flag_RSTOS0+flag_RSTR+flag_S0+flag_S1+flag_S2+flag_SF+flag_SH+is_guest_login_1+last_flag+logged_in_1+num_compromised+protocol_type_tcp+protocol_type_udp+rerror_rate+same_srv_rate+serror_rate+srv_diff_host_rate'
+r=smf.logit(formula=f,data=train_final_data)
+
+result=r.fit()
+
+
+print(result.summary2())
+    
+
+
+# In[45]:
+
+
+from sklearn.linear_model import LogisticRegression
+
+logreg=LogisticRegression()
+results=logreg.fit(train_X,train_y)
+
+#results.coef_
+
+#results.score
 
 
 
+# In[46]:
+
+
+
+#Predicting the test cases
+test_pred = pd.DataFrame( { 'actual':  test_y,
+                           'predicted': logreg.predict( test_X ) } )
+
+test_pred.head(20)
+
+
+# In[50]:
+
+
+test_final_X=test_final_data[test_final_data.columns.difference(['attack_flag_1'])]
+test_final_y=test_final_data['attack_flag_1']
+
+#Predicting the test cases
+test_final_pred = pd.DataFrame( { 'actual':  test_final_y,
+                           'predicted': logreg.predict( test_final_X ) } )
+
+test_final_pred.head(10)
+
+
+# In[51]:
+
+
+# Creating a confusion matrix
+
+from sklearn import metrics
+
+cm = metrics.confusion_matrix( test_pred.actual,
+
+                            test_pred.predicted, [1,0] )
+cm
+
+
+# In[47]:
+
+
+# Creating a confusion matrix
+
+from sklearn import metrics
+
+cm = metrics.confusion_matrix( test_pred.actual,
+                            test_pred.predicted, [1,0] )
+cm
+
+
+# In[48]:
+
+
+score = metrics.accuracy_score( test_pred.actual, test_pred.predicted )
+round( float(score), 2 )
+
+
+# In[58]:
+
+
+train_gini = 2*metrics.roc_auc_score(train_y, logreg.predict(train_X)) - 1
+print("The Gini Index for the model built on the Train Data is : ", train_gini)
+
+test_gini = 2*metrics.roc_auc_score(test_y, logreg.predict(test_X)) - 1
+print("The Gini Index for the model built on the Test Data is : ", test_gini)
+
+train_auc = metrics.roc_auc_score(train_y, logreg.predict(train_X))
+test_auc = metrics.roc_auc_score(test_y, logreg.predict(test_X))
+
+print("The AUC for the model built on the Train Data is : ", train_auc)
+print("The AUC for the model built on the Test Data is : ", test_auc)
+                                 
+
+
+# In[62]:
+
+
+pred_y=logreg.predict(train_X)
+
+
+print(metrics.classification_report(train_y,pred_y ))
 
