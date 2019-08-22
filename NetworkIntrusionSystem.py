@@ -581,7 +581,7 @@ pred_y=results.predict(train_X)
 print(metrics.classification_report(train_y,pred_y ))
 
 
-# In[56]:
+# In[53]:
 
 
 pred_y=results.predict(test_final_X)
@@ -590,23 +590,15 @@ pred_y=results.predict(test_final_X)
 print(metrics.classification_report(test_final_y,pred_y ))
 
 
-# In[58]:
+# In[54]:
 
 
-test_final_data['Pred']=results.predict(test_final_X)
+#test_final_data['Pred']=results.predict(test_final_X)
 
-test_final_data.head()
-
-
-# In[67]:
+#test_final_data.head()
 
 
-notcorrectlypred=test_final_data[test_final_data.attack_flag_1!=test_final_data.Pred]
-
-notcorrectlypred.head()
-
-
-# In[71]:
+# In[55]:
 
 
 from sklearn.tree import DecisionTreeClassifier
@@ -616,7 +608,7 @@ dtree=DecisionTreeClassifier(max_depth=3)
 dtree=dtree.fit(train_X,train_y)
 
 
-# In[84]:
+# In[56]:
 
 
 pred = pd.DataFrame(dtree.predict( train_X ), index=train_X.index)
@@ -629,13 +621,13 @@ d.head()
 d.columns=['actual','pred']
 
 
-# In[85]:
+# In[57]:
 
 
 print(metrics.accuracy_score( d.actual, d.pred ))
 
 
-# In[102]:
+# In[58]:
 
 
 test_pred=dtree.predict(test_final_X)
@@ -650,4 +642,202 @@ new=pd.concat([test_final_y,pred],axis=1)
 new.columns=['actual','predicted']
 
 print(metrics.accuracy_score( new.actual,  new.predicted ))
+
+
+# In[59]:
+
+
+# classifying attackclass
+
+
+
+train_final_data.shape
+
+
+
+# In[60]:
+
+
+train.columns=cols
+
+test.columns=cols
+
+train_final_data['attack']=train.attack
+test_final_data['attack']=test.attack
+
+test_final_data.head()
+
+
+# In[61]:
+
+
+def attackclass(x):
+    d = {'back':'DoS', 'land':'DoS' , 'neptune':'DoS','pod':'DoS','smurf':'DoS','teardrop':'DoS','apache2':'DoS','udpstorm':'DoS','processtable':'DoS','worm':'DoS'
+      ,'satan':'Probe','nmap':'Probe','ipsweep':'Probe', 'portsweep':'Probe','mscan':'Probe','saint':'Probe',
+      'guess_passwd':'R2L','ftp_write':'R2L','imap':'R2L','phf':'R2L','multihop':'R2L','warezmaster':'R2L','warezclient':'R2L',
+     'spy':'R2L','xlock':'R2L','xsnoop':'R2L','snmpguess':'R2L','snmpgetattack':'R2L','httptunnel':'R2L','sendmail':'R2L','named':'R2L',
+         'buffer_overflow':'U2R' ,'loadmodule':'U2R','rootkit':'U2R','perl':'U2R','rootkit':'U2R','sqlattack':'U2R','xterm':'U2R','ps':'U2R',
+    'normal':'Normal'}
+    if x in d.keys():
+        return d[x]
+    else:
+        return ''
+    
+
+        
+
+
+# In[62]:
+
+
+train_final_data['attack_class'] = train_final_data.attack.apply(attackclass)
+
+test_final_data['attack_class'] = test_final_data.attack.apply(attackclass)
+
+test_final_data.head()
+
+
+# In[63]:
+
+
+test_final_data.attack_class.unique()
+
+
+# In[64]:
+
+
+from sklearn.preprocessing import LabelEncoder
+
+enc= LabelEncoder()
+
+train_final_data['class_flag']=enc.fit_transform(train_final_data.attack_class)
+
+test_final_data['class_flag']=enc.fit_transform(test_final_data.attack_class)
+
+test_final_data.class_flag.unique()
+
+test_final_data=test_final_data[test_final_data.attack_class!='']
+
+
+# In[65]:
+
+
+train_final_data.attack_class.unique()
+
+
+# In[66]:
+
+
+train_final_data.drop(['attack','attack_class','attack_flag_1'],axis=1,inplace=True)
+
+test_final_data.drop(['attack','attack_class','attack_flag_1'],axis=1,inplace=True)
+
+test_final_data.head()
+
+
+# In[67]:
+
+
+from sklearn.model_selection import train_test_split,GridSearchCV
+
+
+
+y=train_final_data['class_flag']
+
+#X=train_final_data[kbestfeatures]
+X=train_final_data[train_final_data.columns.difference(['class_flag'])]
+
+train_X,test_X,train_y,test_y=train_test_split(X,y,test_size=0.3,random_state=123)
+
+
+# In[68]:
+
+
+param_grid = {'max_depth': np.arange(3, 8),
+             'max_features': np.arange(3,10)}
+
+
+# In[69]:
+
+
+tree = GridSearchCV(DecisionTreeClassifier(), param_grid, cv = 5)
+tree.fit( train_X, train_y )
+
+
+# In[70]:
+
+
+tree.best_score_
+
+
+# In[71]:
+
+
+tree.best_params_
+
+
+# In[72]:
+
+
+tree.best_estimator_
+
+
+# In[73]:
+
+
+pred_y=tree.predict(train_X)
+
+
+# In[74]:
+
+
+print(metrics.classification_report(train_y, pred_y))
+
+
+# In[75]:
+
+
+train_y.value_counts()
+
+
+# In[76]:
+
+
+actual_test_X=test_final_data[test_final_data.columns.difference(['class_flag'])]
+
+actual_test_y=test_final_data['class_flag']
+
+pred_y=tree.predict(actual_test_X)
+
+print(metrics.accuracy_score(actual_test_y,pred_y))
+#actual_test_X.head()
+print(metrics.classification_report(actual_test_y, pred_y))
+
+
+# In[77]:
+
+
+from sklearn.ensemble import RandomForestClassifier
+
+
+# In[79]:
+
+
+radm_clf = RandomForestClassifier(oob_score=True,n_estimators=100 , max_features=6, n_jobs=-1)
+radm_clf.fit( train_X, train_y )
+
+
+# In[86]:
+
+
+radm_clf.feature_importances_
+
+
+# In[82]:
+
+
+radm_test_pred = pd.DataFrame( { 'actual':  train_y,
+                            'predicted': radm_clf.predict( train_X ) } )
+
+metrics.accuracy_score( radm_test_pred.actual, radm_test_pred.predicted )
 
